@@ -1,0 +1,37 @@
+services:
+  train:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.train
+    volumes:
+      - ../rl:/workspace/rl
+      - ../models:/workspace/models
+      - ../results:/workspace/results
+    environment:
+      - MUJOCO_GL=osmesa
+      - WANDB_MODE=offline
+    command: python rl/train.py
+
+  evaluate:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.train
+    volumes:
+      - ../rl:/workspace/rl
+      - ../models:/workspace/models
+      - ../results:/workspace/results
+    environment:
+      - MUJOCO_GL=osmesa
+    command: python rl/evaluate.py
+
+  ros2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ros2
+    environment:
+      - MUJOCO_GL=osmesa
+    network_mode: host
+    command: >
+      /bin/bash -c "source /opt/ros/humble/setup.bash &&
+      source /ros2_ws/install/setup.bash &&
+      ros2 run manipulation_policy evaluation_node"

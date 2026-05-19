@@ -1,0 +1,24 @@
+FROM python:3.10-slim
+
+RUN apt-get update && apt-get install -y \
+    libosmesa6-dev \
+    libgl1 \
+    libglfw3 \
+    patchelf \
+    gcc \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+COPY rl/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY rl/ ./rl/
+COPY models/ ./models/
+COPY results/ ./results/
+
+ENV MUJOCO_GL=osmesa
+ENV PYTHONPATH=/workspace

@@ -1,0 +1,25 @@
+FROM ros:humble-ros-base-jammy
+
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    python3-colcon-common-extensions \
+    libosmesa6-dev \
+    libgl1 \
+    patchelf \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --no-cache-dir \
+    mujoco>=3.0.0 \
+    onnxruntime>=1.18.0 \
+    numpy>=1.26.0 \
+    gymnasium>=0.29.0 \
+    gymnasium-robotics>=1.2.4
+
+WORKDIR /ros2_ws
+
+COPY ros2_ws/ .
+
+RUN /bin/bash -c "source /opt/ros/humble/setup.bash && \
+    colcon build --packages-select manipulation_policy"
+
+ENV MUJOCO_GL=osmesa

@@ -1,0 +1,22 @@
+env_id: FetchPickAndPlace-v4
+total_timesteps: 1_000_000
+seed: 42
+
+sac:
+  learning_rate: 0.001
+  buffer_size: 1_000_000
+  batch_size: 256
+  tau: 0.005
+  gamma: 0.95
+  train_freq: 1
+  gradient_steps: 1
+  learning_starts: 1000
+
+her:
+  n_sampled_goal: 4
+  goal_selection_strategy: future
+
+eval:
+  n_episodes: 50
+  seed: 42
+  success_threshold: 0.4
