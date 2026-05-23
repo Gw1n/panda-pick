@@ -1,6 +1,6 @@
 # panda-pick
 
-[![build-and-test](https://github.com/gw1npanda-pick/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/gw1n/panda-pick/actions/workflows/build_and_test.yml)
+[![build-and-test](https://github.com/gw1n/panda-pick/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/gw1n/panda-pick/actions/workflows/build_and_test.yml)
 [![sim-evaluation](https://github.com/gw1n/panda-pick/actions/workflows/sim_evaluation.yml/badge.svg)](https://github.com/gw1n/panda-pick/actions/workflows/sim_evaluation.yml)
 
 A Franka Panda arm trained end-to-end with reinforcement learning to pick and place objects, deployed through ROS2, with a CI/CD pipeline that runs headless evaluation on every commit.
