@@ -18,7 +18,6 @@ models/vecnormalize.pkl
 
 results/tb_logs/
 results/evaluations.npz
-results/training_curve.png
 results/latest_eval.json
 
 ros2_ws/build/

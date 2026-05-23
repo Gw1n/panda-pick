@@ -39,6 +39,8 @@ Trained for 1M steps on CPU. Evaluated with a fixed seed over 50 episodes.
 | Success rate (via ROS2 nodes, 10 episodes) | 0.70 |
 | CI regression threshold | 0.40 |
 
+![training curve](results/training_curve.png)
+
 ![demo](results/demo.gif)
 
 ## Getting started
