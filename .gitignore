@@ -6,6 +6,7 @@ dist/
 build/
 
 *.onnx
+!models/policy.onnx
 *.zip
 *.pt
 *.pth

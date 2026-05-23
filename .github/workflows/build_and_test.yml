@@ -5,9 +5,55 @@ on:
   pull_request:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  ros2:
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - name: placeholder
-        run: echo "implement in stage 5"
+
+      - uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: humble
+
+      - name: Install Python deps
+        run: pip3 install onnxruntime numpy
+
+      - name: colcon build
+        shell: bash
+        run: |
+          source /opt/ros/humble/setup.bash
+          cd ros2_ws
+          colcon build --packages-select manipulation_policy
+
+      - name: colcon test
+        shell: bash
+        run: |
+          source /opt/ros/humble/setup.bash
+          cd ros2_ws
+          source install/setup.bash
+          colcon test --packages-select manipulation_policy
+          colcon test-result --verbose
+
+  rl-tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('rl/requirements.txt') }}
+
+      - name: Install system deps
+        run: sudo apt-get install -y libosmesa6-dev libgl1 patchelf
+
+      - name: Install Python deps
+        run: pip install gymnasium gymnasium-robotics
+
+      - name: pytest
+        run: python -m pytest rl/tests/ -v
+        env:
+          MUJOCO_GL: osmesa

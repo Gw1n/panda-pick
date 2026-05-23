@@ -28,10 +28,13 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.ros2
+    volumes:
+      - ../models:/models
+      - ../results:/results
     environment:
       - MUJOCO_GL=osmesa
     network_mode: host
     command: >
       /bin/bash -c "source /opt/ros/humble/setup.bash &&
       source /ros2_ws/install/setup.bash &&
-      ros2 run manipulation_policy evaluation_node"
+      ros2 launch manipulation_policy evaluation_launch.py"

@@ -1,0 +1,9 @@
+{
+  "obs_keys": [
+    "achieved_goal",
+    "desired_goal",
+    "observation"
+  ],
+  "obs_dim": 31,
+  "action_dim": 4
+}
