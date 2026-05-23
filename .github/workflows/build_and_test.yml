@@ -51,7 +51,7 @@ jobs:
         run: sudo apt-get install -y libosmesa6-dev libgl1 patchelf
 
       - name: Install Python deps
-        run: pip install gymnasium gymnasium-robotics
+        run: pip install pytest gymnasium gymnasium-robotics
 
       - name: pytest
         run: python -m pytest rl/tests/ -v
