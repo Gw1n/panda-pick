@@ -15,7 +15,7 @@ The project has three parts that fit together:
 
 **CI/CD.** GitHub Actions runs two workflows on every push: one builds the ROS2 package and runs tests, another loads the ONNX policy and evaluates it over 50 headless episodes. If success rate drops below 0.4, the workflow fails. A third workflow publishes Docker images to GHCR on version tags.
 
-MuJoCo was chosen over Isaac Sim because GitHub Actions runners are CPU-only. Isaac Sim requires an NVIDIA GPU.
+MuJoCo was chosen over Isaac Sim because GitHub Actions runners are CPU-only. Isaac Sim requires an NVIDIA GPU. 
 
 ## Stack
 
