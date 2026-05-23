@@ -19,7 +19,6 @@ models/vecnormalize.pkl
 results/tb_logs/
 results/evaluations.npz
 results/training_curve.png
-results/demo.gif
 results/latest_eval.json
 
 ros2_ws/build/
@@ -28,3 +27,8 @@ ros2_ws/log/
 
 .env
 wandb/
+
+venv/
+.venv/
+env/
+panda-pick/

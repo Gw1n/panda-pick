@@ -1,12 +1,21 @@
-# ROS2 RL Manipulation
+# panda-pick
 
-Training a reinforcement learning agent to pick and place objects with a Franka Panda arm, then deploying the trained policy as a ROS2 node — with a CI/CD pipeline that automatically evaluates it on every commit.
+[![build-and-test](https://github.com/gw1npanda-pick/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/gw1n/panda-pick/actions/workflows/build_and_test.yml)
+[![sim-evaluation](https://github.com/gw1n/panda-pick/actions/workflows/sim_evaluation.yml/badge.svg)](https://github.com/gw1n/panda-pick/actions/workflows/sim_evaluation.yml)
 
-## Motivation
+A Franka Panda arm trained end-to-end with reinforcement learning to pick and place objects, deployed through ROS2, with a CI/CD pipeline that runs headless evaluation on every commit.
 
-This is a pet project that sits at the intersection of three things: robot learning, ROS2, and DevOps practices. The goal is not just to train an agent that works, but to build the infrastructure around it — reproducible training, exportable policy, automated regression testing in simulation.
+## What this is
 
-MuJoCo was chosen over Isaac Sim specifically because GitHub Actions runners are CPU-only. Isaac Sim requires an NVIDIA GPU, which makes it unsuitable for headless CI. MuJoCo runs anywhere.
+The project has three parts that fit together:
+
+**RL training.** A SAC agent with Hindsight Experience Replay learns the pick-and-place task in MuJoCo simulation. HER is necessary here because the reward is sparse — the agent only gets feedback when the object actually reaches the goal. Without it, learning stalls. With it, failed trajectories get retroactively relabeled as successful ones by substituting the achieved state as the goal.
+
+**ROS2 deployment.** The trained policy is exported to ONNX with VecNormalize normalization baked into the graph, then loaded into a ROS2 node. Three nodes communicate over topics: `sim_bridge` runs MuJoCo and publishes observations, `policy_node` runs inference and publishes actions, `evaluation_node` orchestrates episodes and writes a metrics report.
+
+**CI/CD.** GitHub Actions runs two workflows on every push: one builds the ROS2 package and runs tests, another loads the ONNX policy and evaluates it over 50 headless episodes. If success rate drops below 0.4, the workflow fails. A third workflow publishes Docker images to GHCR on version tags.
+
+MuJoCo was chosen over Isaac Sim because GitHub Actions runners are CPU-only. Isaac Sim requires an NVIDIA GPU.
 
 ## Stack
 
@@ -14,86 +23,88 @@ MuJoCo was chosen over Isaac Sim specifically because GitHub Actions runners are
 |---|---|
 | Simulation | MuJoCo via `gymnasium-robotics` (FetchPickAndPlace-v4) |
 | RL algorithm | SAC + HER, Stable-Baselines3 |
-| Policy export | ONNX |
+| Policy export | ONNX (normalization baked in) |
 | Robot framework | ROS2 Humble |
 | Containerization | Docker, Docker Compose |
 | CI/CD | GitHub Actions |
 | Training monitoring | Weights & Biases |
 
-**Why SAC + HER:** pick-and-place has a sparse reward — the agent only gets feedback when the object actually reaches the goal. Without Hindsight Experience Replay, the agent almost never stumbles on a success by chance, so learning stalls. HER retroactively relabels failed trajectories as successful ones by substituting the achieved state as the goal. In practice this is one line in the SB3 config.
+## Results
 
-## Current state
+Trained for 1M steps on CPU. Evaluated with a fixed seed over 50 episodes.
 
-The training infrastructure is in place and verified. Both Docker images build. A short test run (2000 steps) completes without errors.
+| Metric | Value |
+|---|---|
+| Success rate (ONNX eval, 50 episodes) | 0.54 |
+| Success rate (via ROS2 nodes, 10 episodes) | 0.70 |
+| CI regression threshold | 0.40 |
 
-What works:
-- `docker compose build` — both `train` and `ros2` images build successfully
-- `docker compose run train python rl/train.py --no-wandb` — training runs, checkpoints save to `models/`
-- ROS2 package builds with `colcon build` inside the container (stub nodes only for now)
-
-What is not yet implemented:
-- `evaluate.py` — headless evaluation with metrics output
-- `export_onnx.py` — policy export with VecNormalize baked into the ONNX graph
-- ROS2 nodes — `policy_node`, `sim_bridge`, `evaluation_node` are currently stubs
-- CI/CD workflows — the YAML files exist but contain only placeholders
-- Trained weights — no trained model is committed; training is in progress
+![demo](results/demo.gif)
 
 ## Getting started
 
-Build the training image:
+**Training:**
 
 ```bash
 cd docker
 docker compose build train
+docker compose run --rm train python rl/train.py --no-wandb
 ```
 
-Run a short test (2000 steps, no W&B):
+Pause with Ctrl+C — state is saved to `models/paused_state/`. Resume:
 
 ```bash
-docker compose run --rm train python rl/train.py --timesteps 2000 --no-wandb
+docker compose run --rm train python rl/train.py --resume --no-wandb
 ```
 
-Run full training (offline W&B logging):
+**Export and evaluate:**
 
 ```bash
-docker compose run --rm -e WANDB_MODE=offline train
+docker compose run --rm train python rl/export_onnx.py
+docker compose run --rm evaluate python rl/evaluate.py --success-threshold 0.4
 ```
 
-Checkpoints are saved to `models/checkpoints/` every 50k steps. The best model (by eval success rate) is saved to `models/best_model.zip`.
+**ROS2 evaluation (all three nodes):**
+
+```bash
+docker compose build ros2
+docker compose run --rm ros2
+```
+
+**Record a demo GIF** (requires local Python with `imageio`, `onnxruntime`, `gymnasium-robotics`):
+
+```bash
+pip install imageio onnxruntime gymnasium gymnasium-robotics
+python scripts/record_demo.py --output results/demo.gif
+```
 
 ## Repository layout
 
 ```
 .
+├── .github/workflows/
+│   ├── build_and_test.yml     # colcon build + pytest on every push
+│   ├── sim_evaluation.yml     # headless eval, artifact upload, regression gate
+│   └── docker_publish.yml     # push images to GHCR on version tags
 ├── docker/
-│   ├── Dockerfile.train       # RL training environment
-│   ├── Dockerfile.ros2        # ROS2 runtime + ONNX inference
+│   ├── Dockerfile.train       # python:3.10-slim + MuJoCo + SB3
+│   ├── Dockerfile.ros2        # ros:humble + onnxruntime + MuJoCo
 │   └── docker-compose.yml
 ├── rl/
-│   ├── train.py               # SAC + HER training entry point
-│   ├── evaluate.py            # headless evaluation (not yet implemented)
-│   ├── export_onnx.py         # policy export (not yet implemented)
-│   ├── envs/
-│   │   └── pick_place_env.py  # environment factory
-│   └── configs/
-│       └── sac_config.yaml    # hyperparameters
-├── ros2_ws/
-│   └── src/
-│       └── manipulation_policy/   # ROS2 package (stubs)
-│           ├── policy_node.py
-│           ├── sim_bridge.py
-│           └── evaluation_node.py
-├── models/                    # saved weights (gitignored)
-└── results/                   # eval metrics, TensorBoard logs (gitignored)
+│   ├── train.py               # SAC + HER, pause/resume via SIGINT
+│   ├── evaluate.py            # headless ONNX evaluation, writes metrics.json
+│   ├── export_onnx.py         # PolicyWrapper: normalization baked into ONNX
+│   ├── envs/pick_place_env.py
+│   ├── configs/sac_config.yaml
+│   └── tests/
+├── ros2_ws/src/manipulation_policy/
+│   ├── manipulation_policy/
+│   │   ├── policy_node.py     # /observation → ONNX → /joint_command
+│   │   ├── sim_bridge.py      # MuJoCo ↔ ROS2, dedicated sim thread
+│   │   └── evaluation_node.py # episode orchestration, metrics output
+│   └── launch/evaluation_launch.py
+├── models/
+│   ├── policy.onnx            # trained policy (normalization included)
+│   └── policy_meta.json       # obs key order and dimensions
+└── scripts/record_demo.py
 ```
-
-## What's next
-
-**Stage 3 — evaluate and export:**
-Write `evaluate.py` to run N headless episodes and output a `metrics.json` with success rate. Write `export_onnx.py` to export the trained policy with VecNormalize normalization baked into the ONNX graph, so the ROS2 node receives raw observations and returns actions without any additional preprocessing.
-
-**Stage 4 — ROS2 nodes:**
-Implement the three nodes: `sim_bridge` (MuJoCo ↔ ROS2 topic bridge), `policy_node` (ONNX inference on `/observation`, publishes to `/joint_command`), and `evaluation_node` (orchestrates episodes and reports success rate).
-
-**Stage 5 — CI/CD:**
-Wire up the three GitHub Actions workflows: build + test on every push, headless evaluation on merges to main (fails if success rate drops below 0.4), and Docker image publish on version tags.
